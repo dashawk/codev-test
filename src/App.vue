@@ -1,12 +1,14 @@
 <template>
   <div class="container-fluid wrapper">
+    <pre>{{ currentView }}</pre>
     <div class="row top-panel">
       <div class="col-3 p-0">
         <ul class="left-panel">
           <li class="milestone">
-            <span class="count">2</span>
-            <span class="number">1</span>
-            <span class="label">Milestone 1</span>
+            <div>
+              <span class="count">2</span>
+              <span class="number">1</span>
+            </div>Milestone 1
           </li>
           <li class="divider"></li>
           <li class="fc-btn-month" @click="viewMonth">
@@ -28,7 +30,13 @@
           <li class="arrow-previous">
             <i class="fas fa-arrow-left"></i>
           </li>
-          <li class="month" :class="getCurrentMonth" v-for="(month, index) in months" :key="index">
+          <li class="current-year">{{currentYear}}</li>
+          <li
+            class="month"
+            :class="{ active: (index == currentMonth)}"
+            v-for="(month, index) in months"
+            :key="index"
+          >
             <span>{{ month }}</span>
           </li>
           <li class="arrow-next">
@@ -38,31 +46,51 @@
       </div>
     </div>
     <div class="row">
-      <div class="col">graph here</div>
-      <div class="col-6">
+      <div class="col" v-if="currentView === 'dayGridMonth'">graph here</div>
+      <div
+        :class="{ 'col-6': currentView === 'dayGridMonth', col: currentView !== 'dayGridMonth' }"
+      >
+        <div class="controls">
+          <FullCalendar
+            class="app-calendar"
+            ref="fullCalendar"
+            defaultView="dayGridMonth"
+            themeSystem="bootstrap"
+            :header="{
+              left: '',
+              center: '',
+              right: ''
+            }"
+            :plugins="calendarPlugins"
+            :weekends="calendarWeekends"
+            :events="calendarEvents"
+            @dateClick="handleDateClick"
+          />
+
+          <div class="next" @click="nextMonth">
+            <i class="fas fa-arrow-up"></i>
+          </div>
+          <div class="prev" @click="previousMonth">
+            <i class="fas fa-arrow-down"></i>
+          </div>
+        </div>
+      </div>
+      <div class="col" v-if="currentView === 'dayGridMonth'">
         <FullCalendar
-          class="demo-app-calendar"
-          ref="fullCalendar"
-          defaultView="dayGridMonth"
+          class="app-calendar-day"
+          ref="dayCalendar"
+          defaultView="timeGridDay"
           themeSystem="bootstrap"
           :header="{
-        left: '',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
-      }"
-          :customButtons="{
-          dayGridMonth: {
-              text: 'sample month',
-
-          }
-      }"
+            left: '',
+            center: '',
+            right: ''
+            }"
           :plugins="calendarPlugins"
           :weekends="calendarWeekends"
           :events="calendarEvents"
-          @dateClick="handleDateClick"
         />
       </div>
-      <div class="col">currently selected day here</div>
     </div>
     <!-- <div class="demo-app-top">
       <button @click="toggleWeekends">toggle weekends</button>
@@ -80,7 +108,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import bootstrapPlugin from "@fullcalendar/bootstrap";
 export default {
   components: {
-    FullCalendar // make the <FullCalendar> tag available
+    FullCalendar
   },
   data: function() {
     return {
@@ -99,13 +127,14 @@ export default {
         "DEC"
       ],
       calendar: null,
+      currentView: "dayGridMonth",
       currentMonth: 0,
+      currentYear: 0,
       calendarPlugins: [
-        // plugins must be defined in the JS
         bootstrapPlugin,
         dayGridPlugin,
         timeGridPlugin,
-        interactionPlugin // needed for dateClick
+        interactionPlugin
       ],
       calendarWeekends: true,
       calendarEvents: [
@@ -114,56 +143,52 @@ export default {
       ]
     };
   },
+  mounted() {
+    var calendar = this.$refs.fullCalendar.getApi();
+    var currentDate = calendar.getDate();
+    this.currentMonth = currentDate.getMonth();
+    this.currentYear = currentDate.getFullYear();
+    calendar.setOption("height", 600);
+  },
   methods: {
-    toggleWeekends() {
-      this.calendarWeekends = !this.calendarWeekends; // update a property
-    },
     nextMonth() {
       var calendar = this.$refs.fullCalendar.getApi();
       calendar.next();
+      var currentDate = calendar.getDate();
+      this.currentMonth = currentDate.getMonth();
+      this.currentYear = currentDate.getFullYear();
     },
     previousMonth() {
       var calendar = this.$refs.fullCalendar.getApi();
       calendar.prev();
+      var currentDate = calendar.getDate();
+      this.currentMonth = currentDate.getMonth();
+      this.currentYear = currentDate.getFullYear();
     },
     viewMonth() {
       var calendar = this.$refs.fullCalendar.getApi();
       calendar.changeView("dayGridMonth");
+      this.currentView = "dayGridMonth";
     },
     viewWeek() {
       var calendar = this.$refs.fullCalendar.getApi();
       calendar.changeView("timeGridWeek");
+      this.currentView = "timeGridWeek";
     },
     viewDay() {
       var calendar = this.$refs.fullCalendar.getApi();
       calendar.changeView("timeGridDay");
-    },
-    getCurrentMonth() {
-      var currentDate = this.calendar.getDate();
-      this.currentMonth = currentDate.getMonth();
-      return "test";
-    },
-    gotoPast() {
-      let calendarApi = this.calendar.getApi(); // from the ref="..."
-      calendarApi.gotoDate("2000-01-01"); // call a method on the Calendar object
+      this.currentView = "timeGridDay";
     },
     handleDateClick(arg) {
-      if (confirm("Would you like to add an event to " + arg.dateStr + " ?")) {
-        this.calendarEvents.push({
-          // add new event data
-          title: "New Event",
-          start: arg.date,
-          allDay: arg.allDay
-        });
-      }
+      var calendar = this.$refs.dayCalendar.getApi();
+      calendar.gotoDate(arg.date);
     }
   }
 };
 </script>
 
 <style lang='scss'>
-// you must include each plugins' css
-// paths prefixed with ~ signify node_modules
 @import "~@fullcalendar/core/main.css";
 @import "~@fullcalendar/daygrid/main.css";
 @import "~@fullcalendar/timegrid/main.css";
@@ -180,7 +205,7 @@ export default {
     .left-panel {
       list-style: none;
       margin: 0;
-      padding: 0;
+      padding: 8px;
 
       li {
         display: inline-block;
@@ -195,20 +220,21 @@ export default {
           height: 42px;
         }
 
-        &.milestone {
+        &.milestone > div {
           position: relative;
           text-align: center;
+          border: 3px solid #c4c4c4;
+          border-radius: 17px;
+          width: 35px;
+          height: 35px;
+          padding: 0;
+          float: left;
+          line-height: 13px;
+          margin-right: 10px;
           .count {
             position: absolute;
             top: 0;
             right: 0;
-          }
-          .number {
-            display: block;
-            padding: 13px;
-            border: 2px solid;
-            border-radius: 28px;
-            width: 54px;
           }
         }
 
@@ -218,7 +244,7 @@ export default {
             cursor: pointer;
           }
           &.active {
-            color: red;
+            color: #1be6ff;
           }
         }
       }
@@ -235,27 +261,49 @@ export default {
 
         &.month {
           padding: 20px 22px;
+
+          &.active {
+            color: #1be6ff;
+          }
         }
       }
     }
   }
+
+  .controls {
+    position: relative;
+    z-index: 9999;
+    .next {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      margin-left: auto;
+      margin-right: auto;
+      width: 16px;
+    }
+    .prev {
+      position: absolute;
+      bottom: -30px;
+      left: 0;
+      right: 0;
+      margin-left: auto;
+      margin-right: auto;
+      width: 16px;
+    }
+  }
 }
 
-.demo-app {
-  font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
-  font-size: 14px;
-}
-.demo-app-top {
-  margin: 0 0 3em;
-}
-.demo-app-calendar {
+.app-calendar {
   margin: 0 auto;
-  //   max-width: 900px;
 
-  //   .fc-toolbar.fc-header-toolbar {
-  //     height: 65px;
-  //     border-bottom: 1px solid #ddd;
-  //     background-color: #f7f7f7;
-  //   }
+  .fc-view-container {
+    table > thead:after {
+      content: "-";
+      display: block;
+      line-height: 1em;
+      color: transparent;
+    }
+  }
 }
 </style>
